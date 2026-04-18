@@ -9,3 +9,4 @@ passlib[bcrypt]
 python-dotenv
 pytest
 httpx
+python-multipart
