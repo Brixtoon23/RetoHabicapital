@@ -21,9 +21,15 @@ def create_pocket(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    all_member_ids = list(set(data.member_user_ids))
-    n_members = len(all_member_ids) + 1  # +1 por el creador
-    target_per_member = data.goal_cents // n_members
+    all_member_ids = list(set(str(uid) for uid in data.member_user_ids))
+    
+    existing_users = db.query(User).filter(User.id.in_(all_member_ids)).all()
+    if len(existing_users) != len(all_member_ids):
+        raise HTTPException(404, "Uno o más usuarios invitados no existen")
+
+    n_members = len(all_member_ids) + 1
+    base_target = data.goal_cents // n_members
+    remainder = data.goal_cents % n_members
 
     pocket = SavingPocket(
         creator_id=current_user.id,
@@ -35,22 +41,18 @@ def create_pocket(
     db.add(pocket)
     db.flush()
 
-    creator_member = PocketMember(
+    # creador absorbe el residuo
+    db.add(PocketMember(
         pocket_id=pocket.id,
         user_id=current_user.id,
-        target_cents=target_per_member,
-    )
-    db.add(creator_member)
+        target_cents=base_target + remainder,
+    ))
 
     for uid in all_member_ids:
-        user = db.query(User).filter(User.id == uid).first()
-        if not user:
-            db.rollback()
-            raise HTTPException(404, f"Usuario {uid} no encontrado")
         db.add(PocketMember(
             pocket_id=pocket.id,
             user_id=uid,
-            target_cents=target_per_member,
+            target_cents=base_target,
         ))
 
     db.commit()
@@ -59,7 +61,8 @@ def create_pocket(
         "pocket_id": pocket.id,
         "name": pocket.name,
         "goal_cents": pocket.goal_cents,
-        "target_per_member_cents": target_per_member,
+        "base_target_per_member_cents": base_target,
+        "creator_target_cents": base_target + remainder,
         "n_members": n_members,
     }
 
@@ -81,7 +84,7 @@ def contribute(
     if not pocket:
         raise HTTPException(404, "Bolsillo no encontrado")
     if pocket.status != "open":
-        raise HTTPException(400, f"El bolsillo está {pocket.status}")
+        raise HTTPException(400, f"El bolsillo está {pocket.status} — no acepta aportes")
 
     member = db.query(PocketMember).filter(
         PocketMember.pocket_id == pocket_id,
@@ -101,13 +104,12 @@ def contribute(
     account.balance_cents -= data.amount_cents
     pocket.collected_cents += data.amount_cents
 
-    contribution = PocketContribution(
+    db.add(PocketContribution(
         pocket_id=pocket.id,
         account_id=account.id,
         member_id=member.id,
         amount_cents=data.amount_cents,
-    )
-    db.add(contribution)
+    ))
 
     db.add(Transaction(
         account_id=account.id,
@@ -117,12 +119,11 @@ def contribute(
         reference_id=pocket.id,
     ))
 
-    total_contributed = sum(
-        c.amount_cents for c in db.query(PocketContribution).filter(
-            PocketContribution.member_id == member.id,
-            PocketContribution.pocket_id == pocket_id,
-        ).all()
-    ) + data.amount_cents
+    prev_contributions = db.query(PocketContribution).filter(
+        PocketContribution.member_id == member.id,
+        PocketContribution.pocket_id == pocket_id,
+    ).all()
+    total_contributed = sum(c.amount_cents for c in prev_contributions) + data.amount_cents
 
     member.status = "complete" if total_contributed >= member.target_cents else "partial"
 
@@ -192,20 +193,24 @@ def cancel_pocket(
 
     if not pocket:
         raise HTTPException(404, "Bolsillo no encontrado o no eres el creador")
-    if pocket.status == "cancelled":
-        raise HTTPException(400, "El bolsillo ya está cancelado")
+    if pocket.status in ("cancelled", "disbursed"):
+        raise HTTPException(400, f"El bolsillo ya está {pocket.status}")
 
     contributions = db.query(PocketContribution).filter(
         PocketContribution.pocket_id == pocket_id
     ).all()
 
-    refunded_users = {}
+    total_refunded = 0
+    accounts_refunded = set()
+
     for contrib in contributions:
         account = db.query(Account).filter(
             Account.id == contrib.account_id
         ).with_for_update().first()
 
         account.balance_cents += contrib.amount_cents
+        total_refunded += contrib.amount_cents
+        accounts_refunded.add(str(contrib.account_id))
 
         db.add(Transaction(
             account_id=account.id,
@@ -215,22 +220,17 @@ def cancel_pocket(
             reference_id=pocket.id,
         ))
 
-        refunded_users[str(contrib.account_id)] = (
-            refunded_users.get(str(contrib.account_id), 0) + contrib.amount_cents
-        )
-
     pocket.status = "cancelled"
     pocket.collected_cents = 0
 
-    members = db.query(PocketMember).filter(PocketMember.pocket_id == pocket_id).all()
-    for m in members:
+    for m in db.query(PocketMember).filter(PocketMember.pocket_id == pocket_id).all():
         m.status = "pending"
 
     db.commit()
     return {
         "message": "Bolsillo cancelado. Todas las contribuciones fueron devueltas.",
-        "total_refunded_cents": sum(refunded_users.values()),
-        "refunds_issued": len(refunded_users),
+        "total_refunded_cents": total_refunded,
+        "refunds_issued": len(accounts_refunded),
     }
 
 
@@ -265,7 +265,8 @@ def disburse_pocket(
         reference_id=pocket.id,
     ))
 
-    pocket.status = "cancelled"
+    # estado terminal único — no se puede cancelar ni volver a desembolsar
+    pocket.status = "disbursed"
     pocket.collected_cents = 0
 
     db.commit()
