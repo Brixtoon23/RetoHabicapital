@@ -1,9 +1,6 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.routers import auth, accounts, transfers, pockets
-from app.database import engine, Base
-from app.models import user, account, pocket, transaction
-
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="HabiCapital Reto — Billetera P2P",
@@ -11,10 +8,12 @@ app = FastAPI(
     version="1.0.0",
 )
 
-app = FastAPI(
-    title="HabiCapital Reto — Billetera P2P",
-    description="Sistema de transferencias entre personas con bolsillos de ahorro colectivo",
-    version="1.0.0",
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
