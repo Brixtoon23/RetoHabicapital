@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HabiCapital — Billetera P2P</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #7c6dff;
+    --accent2: #4fffb0;
+    --danger: #ff4f6d;
+    --warn: #ffb84f;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+  body { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+
+  /* sidebar */
+  nav {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 28px 0;
+    position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .nav-logo {
+    font-size: 13px; font-weight: 700; letter-spacing: 0.12em;
+    color: var(--accent2); padding: 0 20px 24px; text-transform: uppercase;
+    font-family: var(--mono);
+  }
+  .nav-logo span { color: var(--muted); font-weight: 400; }
+  .nav-section { font-size: 10px; color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase; padding: 16px 20px 6px; font-family: var(--mono); }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 20px; font-size: 13px; font-weight: 500;
+    color: var(--muted); cursor: pointer; transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(124,109,255,0.07); }
+  .nav-item .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  .nav-user {
+    margin-top: auto; padding: 16px 20px 0;
+    border-top: 1px solid var(--border);
+    font-size: 12px; font-family: var(--mono); color: var(--muted);
+  }
+  .nav-user strong { color: var(--accent2); display: block; margin-bottom: 2px; font-size: 11px; }
+  .logout-btn { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 11px; font-family: var(--mono); margin-top: 8px; padding: 0; }
+
+  /* main */
+  main { padding: 40px 48px; max-width: 900px; }
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 4px; }
+  h1 span { color: var(--accent); }
+  .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 32px; font-family: var(--mono); }
+
+  /* cards */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; margin-bottom: 16px;
+  }
+  .card-title { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; font-family: var(--mono); }
+
+  /* stat row */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .stat-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--mono); margin-bottom: 8px; }
+  .stat-value { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+  .stat-value.green { color: var(--accent2); }
+  .stat-value.purple { color: var(--accent); }
+
+  /* forms */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-grid.single { grid-template-columns: 1fr; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; font-family: var(--mono); }
+  input, textarea {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; color: var(--text); font-family: var(--mono); font-size: 13px;
+    transition: border-color 0.15s; outline: none; width: 100%;
+  }
+  input:focus, textarea:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--muted); }
+
+  /* buttons */
+  .btn {
+    padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: var(--sans); font-size: 13px; font-weight: 600;
+    transition: all 0.15s; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #9080ff; transform: translateY(-1px); }
+  .btn-success { background: rgba(79,255,176,0.12); color: var(--accent2); border: 1px solid rgba(79,255,176,0.25); }
+  .btn-success:hover { background: rgba(79,255,176,0.2); }
+  .btn-danger { background: rgba(255,79,109,0.12); color: var(--danger); border: 1px solid rgba(255,79,109,0.25); }
+  .btn-danger:hover { background: rgba(255,79,109,0.2); }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+  /* auth page */
+  .auth-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 40px; }
+  .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 100%; max-width: 400px; }
+  .auth-logo { font-size: 11px; font-family: var(--mono); color: var(--accent2); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 24px; }
+  .auth-title { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+  .auth-sub { font-size: 12px; color: var(--muted); font-family: var(--mono); margin-bottom: 28px; }
+  .auth-tabs { display: flex; gap: 0; margin-bottom: 24px; background: var(--bg); border-radius: 8px; padding: 3px; }
+  .auth-tab { flex: 1; padding: 8px; text-align: center; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 6px; transition: all 0.15s; color: var(--muted); border: none; background: none; font-family: var(--sans); }
+  .auth-tab.active { background: var(--accent); color: #fff; }
+
+  /* toast */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 999;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast-item {
+    padding: 12px 18px; border-radius: 10px; font-size: 13px; font-family: var(--mono);
+    max-width: 320px; animation: slideIn 0.2s ease;
+    border: 1px solid;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  .toast-ok { background: rgba(79,255,176,0.1); border-color: rgba(79,255,176,0.3); color: var(--accent2); }
+  .toast-err { background: rgba(255,79,109,0.1); border-color: rgba(255,79,109,0.3); color: var(--danger); }
+  .toast-info { background: rgba(124,109,255,0.1); border-color: rgba(124,109,255,0.3); color: var(--accent); }
+
+  /* history list */
+  .tx-list { display: flex; flex-direction: column; gap: 8px; }
+  .tx-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+  .tx-type { font-size: 11px; font-family: var(--mono); color: var(--muted); }
+  .tx-desc { font-size: 13px; font-weight: 500; margin-top: 2px; }
+  .tx-amount { font-size: 15px; font-weight: 700; font-family: var(--mono); }
+  .tx-amount.pos { color: var(--accent2); }
+  .tx-amount.neg { color: var(--danger); }
+  .tx-date { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+
+  /* pocket status */
+  .member-group { margin-bottom: 16px; }
+  .member-group-title { font-size: 10px; font-family: var(--mono); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+  .badge-complete { background: rgba(79,255,176,0.15); color: var(--accent2); }
+  .badge-partial { background: rgba(255,184,79,0.15); color: var(--warn); }
+  .badge-pending { background: rgba(107,107,128,0.2); color: var(--muted); }
+  .badge-open { background: rgba(124,109,255,0.15); color: var(--accent); }
+  .badge-cancelled { background: rgba(255,79,109,0.15); color: var(--danger); }
+  .badge-disbursed { background: rgba(79,255,176,0.15); color: var(--accent2); }
+  .member-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg); border-radius: 8px; margin-bottom: 4px; font-size: 13px; }
+  .progress-bar { height: 6px; background: var(--surface2); border-radius: 3px; margin: 12px 0; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.5s ease; }
+
+  /* pocket list */
+  .pocket-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s; }
+  .pocket-card:hover { border-color: var(--accent); }
+  .pocket-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .pocket-meta { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  .pocket-row { display: flex; align-items: center; justify-content: space-between; }
+
+  /* divider */
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; font-family: var(--mono); }
+
+  /* auth page overrides */
+  body.auth-mode { display: block; }
+  body.auth-mode nav { display: none; }
+</style>
+</head>
+<body class="auth-mode">
+
+<!-- AUTH PAGE -->
+<div id="auth-page" class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">HabiCapital / reto-p2p</div>
+    <div class="auth-title">Billetera P2P</div>
+    <div class="auth-sub">Bolsillos colectivos · Transferencias · Sin banco</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Entrar</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">Registrarse</button>
+    </div>
+    <div id="login-form">
+      <div class="field" style="margin-bottom:12px">
+        <label>Email</label>
+        <input id="login-email" type="email" placeholder="ana@test.com">
+      </div>
+      <div class="field" style="margin-bottom:20px">
+        <label>Contraseña</label>
+        <input id="login-pass" type="password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Entrar →</button>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="field" style="margin-bottom:12px">
+        <label>Nombre</label>
+        <input id="reg-name" type="text" placeholder="Ana García">
+      </div>
+      <div class="field" style="margin-bottom:12px">
+        <label>Email</label>
+        <input id="reg-email" type="email" placeholder="ana@test.com">
+      </div>
+      <div class="field" style="margin-bottom:20px">
+        <label>Contraseña</label>
+        <input id="reg-pass" type="password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="doRegister()">Crear cuenta →</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<nav id="app-nav" style="display:none">
+  <div class="nav-logo">Habi<span>Capital</span></div>
+  <div class="nav-section">Cuenta</div>
+  <div class="nav-item active" onclick="showPage('dashboard')"><span class="dot"></span> Dashboard</div>
+  <div class="nav-item" onclick="showPage('deposit')"><span class="dot"></span> Depositar</div>
+  <div class="nav-item" onclick="showPage('transfer')"><span class="dot"></span> Transferir</div>
+  <div class="nav-item" onclick="showPage('history')"><span class="dot"></span> Historial</div>
+  <div class="nav-section">Bolsillos</div>
+  <div class="nav-item" onclick="showPage('pockets')"><span class="dot"></span> Mis bolsillos</div>
+  <div class="nav-item" onclick="showPage('create-pocket')"><span class="dot"></span> Crear bolsillo</div>
+  <div class="nav-user">
+    <strong id="nav-user-name">—</strong>
+    <span id="nav-user-email" style="font-size:10px"></span>
+    <br>
+    <button class="logout-btn" onclick="doLogout()">← Cerrar sesión</button>
+  </div>
+</nav>
+
+<main id="app-main" style="display:none">
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active">
+    <h1>Dashboard <span>↗</span></h1>
+    <div class="subtitle">// resumen de tu cuenta</div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Saldo disponible</div>
+        <div class="stat-value green" id="dash-balance">—</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--mono)" id="dash-balance-raw"></div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">ID de cuenta</div>
+        <div style="font-size:11px;font-family:var(--mono);color:var(--accent);word-break:break-all;margin-top:4px" id="dash-account-id">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Bolsillos activos</div>
+        <div class="stat-value purple" id="dash-pockets">—</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Acciones rápidas</div>
+      <div class="btn-row">
+        <button class="btn btn-success" onclick="showPage('deposit')">+ Depositar</button>
+        <button class="btn btn-ghost" onclick="showPage('transfer')">→ Transferir</button>
+        <button class="btn btn-ghost" onclick="showPage('create-pocket')">◎ Nuevo bolsillo</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Últimos movimientos</div>
+      <div id="dash-history"></div>
+    </div>
+  </div>
+
+  <!-- DEPOSIT -->
+  <div id="page-deposit" class="page">
+    <h1>Depositar <span>↓</span></h1>
+    <div class="subtitle">// carga saldo simulado a tu cuenta</div>
+    <div class="card">
+      <div class="card-title">Monto a cargar</div>
+      <div class="field" style="margin-bottom:16px">
+        <label>Monto en pesos (COP)</label>
+        <input id="deposit-amount" type="number" placeholder="50000" min="1">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="font-size:12px" onclick="setDeposit(10000)">$10.000</button>
+        <button class="btn btn-ghost" style="font-size:12px" onclick="setDeposit(50000)">$50.000</button>
+        <button class="btn btn-ghost" style="font-size:12px" onclick="setDeposit(100000)">$100.000</button>
+        <button class="btn btn-ghost" style="font-size:12px" onclick="setDeposit(200000)">$200.000</button>
+      </div>
+      <button class="btn btn-success" onclick="doDeposit()">Cargar saldo →</button>
+    </div>
+  </div>
+
+  <!-- TRANSFER -->
+  <div id="page-transfer" class="page">
+    <h1>Transferir <span>→</span></h1>
+    <div class="subtitle">// envía plata a otra cuenta</div>
+    <div class="card">
+      <div class="card-title">Datos de la transferencia</div>
+      <div class="form-grid single">
+        <div class="field">
+          <label>ID de cuenta destino</label>
+          <input id="transfer-to" type="text" placeholder="uuid de la cuenta destino">
+        </div>
+        <div class="field">
+          <label>Monto (COP)</label>
+          <input id="transfer-amount" type="number" placeholder="20000" min="1">
+        </div>
+        <div class="field">
+          <label>Descripción (opcional)</label>
+          <input id="transfer-desc" type="text" placeholder="Para la cena del sábado">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="doTransfer()">Transferir →</button>
+      </div>
+      <div class="divider"></div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">Tu ID de cuenta: <span id="transfer-my-id" style="color:var(--accent)">—</span></div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="page-history" class="page">
+    <h1>Historial <span>◎</span></h1>
+    <div class="subtitle">// todos tus movimientos</div>
+    <div class="card">
+      <div class="card-title">Movimientos</div>
+      <div id="history-list" class="tx-list"></div>
+    </div>
+  </div>
+
+  <!-- POCKETS -->
+  <div id="page-pockets" class="page">
+    <h1>Bolsillos <span>◎</span></h1>
+    <div class="subtitle">// ahorro colectivo entre personas</div>
+    <div id="pockets-list"></div>
+
+    <!-- pocket detail -->
+    <div id="pocket-detail" style="display:none">
+      <button class="btn btn-ghost" style="margin-bottom:20px;font-size:12px" onclick="hidePocketDetail()">← Volver</button>
+      <div class="card" id="pocket-detail-card"></div>
+      <div class="card" id="pocket-contribute-card">
+        <div class="card-title">Hacer un aporte</div>
+        <div class="field" style="margin-bottom:12px">
+          <label>Monto (COP)</label>
+          <input id="contribute-amount" type="number" placeholder="20000" min="1">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-success" onclick="doContribute()">Aportar →</button>
+          <button class="btn btn-danger" onclick="doCancel()">Cancelar bolsillo</button>
+          <button class="btn btn-ghost" onclick="doDisburse()">Desembolsar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE POCKET -->
+  <div id="page-create-pocket" class="page">
+    <h1>Crear bolsillo <span>+</span></h1>
+    <div class="subtitle">// define la meta y quiénes participan</div>
+    <div class="card">
+      <div class="card-title">Detalles del bolsillo</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Nombre</label>
+          <input id="pocket-name" type="text" placeholder="Cumpleaños de Carlos">
+        </div>
+        <div class="field">
+          <label>Meta total (COP)</label>
+          <input id="pocket-goal" type="number" placeholder="200000" min="1">
+        </div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label>Descripción (opcional)</label>
+        <input id="pocket-desc" type="text" placeholder="Juntamos para el regalo">
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label>IDs de usuarios invitados (uno por línea)</label>
+        <textarea id="pocket-members" rows="4" placeholder="uuid-usuario-1&#10;uuid-usuario-2&#10;uuid-usuario-3" style="resize:vertical"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="doCreatePocket()">Crear bolsillo →</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+const API = 'https://retohabicapital-production.up.railway.app';
+let token = localStorage.getItem('habi_token');
+let currentUser = JSON.parse(localStorage.getItem('habi_user') || 'null');
+let currentAccount = null;
+let currentPocketId = null;
+
+// ── helpers ──────────────────────────────────────────────
+const fmt = cents => '$' + (cents / 1).toLocaleString('es-CO');
+const fmtDate = iso => new Date(iso).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+
+function toast(msg, type = 'ok') {
+  const el = document.createElement('div');
+  el.className = `toast-item toast-${type}`;
+  el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+async function api(method, path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(API + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+  return data;
+}
+
+async function apiForm(path, params) {
+  const body = new URLSearchParams(params);
+  const res = await fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+  return data;
+}
+
+// ── auth ─────────────────────────────────────────────────
+function switchAuthTab(tab) {
+  document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
+  document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (i === 0) === (tab === 'login')));
+}
+
+async function doLogin() {
+  try {
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-pass').value;
+    const data = await apiForm('/auth/token', { username: email, password: pass });
+    token = data.access_token;
+    localStorage.setItem('habi_token', token);
+    currentUser = { email };
+    localStorage.setItem('habi_user', JSON.stringify(currentUser));
+    toast('Bienvenido ✓', 'ok');
+    enterApp();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function doRegister() {
+  try {
+    const name = document.getElementById('reg-name').value;
+    const email = document.getElementById('reg-email').value;
+    const pass = document.getElementById('reg-pass').value;
+    await api('POST', '/auth/register', { name, email, password: pass });
+    toast('Cuenta creada — ahora entra', 'ok');
+    switchAuthTab('login');
+    document.getElementById('login-email').value = email;
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function doLogout() {
+  localStorage.clear();
+  token = null; currentUser = null; currentAccount = null;
+  document.body.className = 'auth-mode';
+  document.getElementById('auth-page').style.display = 'flex';
+  document.getElementById('app-nav').style.display = 'none';
+  document.getElementById('app-main').style.display = 'none';
+}
+
+function enterApp() {
+  document.body.className = '';
+  document.getElementById('auth-page').style.display = 'none';
+  document.getElementById('app-nav').style.display = 'flex';
+  document.getElementById('app-main').style.display = 'block';
+  document.getElementById('nav-user-email').textContent = currentUser?.email || '';
+  loadDashboard();
+  showPage('dashboard');
+}
+
+// ── navigation ───────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id)?.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => { if (n.textContent.toLowerCase().includes(id.replace('-', ' ').toLowerCase())) n.classList.add('active'); });
+
+  if (id === 'history') loadHistory();
+  if (id === 'pockets') loadPockets();
+  if (id === 'dashboard') loadDashboard();
+  if (id === 'transfer') document.getElementById('transfer-my-id').textContent = currentAccount?.id || '—';
+}
+
+// ── dashboard ────────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const acc = await api('GET', '/accounts/balance');
+    currentAccount = acc;
+    document.getElementById('nav-user-name').textContent = currentUser?.email?.split('@')[0] || '—';
+    document.getElementById('dash-balance').textContent = fmt(acc.balance_cents);
+    document.getElementById('dash-balance-raw').textContent = acc.balance_cents.toLocaleString() + ' centavos';
+    document.getElementById('dash-account-id').textContent = acc.id;
+
+    const txs = await api('GET', '/accounts/history');
+    renderMiniHistory(txs.slice(0, 5));
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function renderMiniHistory(txs) {
+  const el = document.getElementById('dash-history');
+  if (!txs.length) { el.innerHTML = '<div class="empty">Sin movimientos aún</div>'; return; }
+  el.innerHTML = '<div class="tx-list">' + txs.map(tx => txRow(tx)).join('') + '</div>';
+}
+
+function txRow(tx) {
+  const pos = tx.amount_cents > 0;
+  const typeMap = { deposit: 'Depósito', transfer_in: 'Recibido', transfer_out: 'Enviado', pocket_out: 'Aporte bolsillo', pocket_refund: 'Devolución bolsillo', pocket_in: 'Desembolso bolsillo' };
+  return `<div class="tx-item">
+    <div>
+      <div class="tx-type">${typeMap[tx.type] || tx.type}</div>
+      <div class="tx-desc">${tx.description || '—'}</div>
+      <div class="tx-date">${fmtDate(tx.created_at)}</div>
+    </div>
+    <div class="tx-amount ${pos ? 'pos' : 'neg'}">${pos ? '+' : ''}${fmt(tx.amount_cents)}</div>
+  </div>`;
+}
+
+// ── deposit ──────────────────────────────────────────────
+function setDeposit(v) { document.getElementById('deposit-amount').value = v; }
+
+async function doDeposit() {
+  try {
+    const amount = parseInt(document.getElementById('deposit-amount').value);
+    if (!amount || amount <= 0) { toast('Ingresa un monto válido', 'err'); return; }
+    await api('POST', '/accounts/deposit', { amount_cents: amount });
+    toast(`${fmt(amount)} cargados ✓`, 'ok');
+    loadDashboard();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── transfer ─────────────────────────────────────────────
+async function doTransfer() {
+  try {
+    const to = document.getElementById('transfer-to').value.trim();
+    const amount = parseInt(document.getElementById('transfer-amount').value);
+    const desc = document.getElementById('transfer-desc').value;
+    if (!to || !amount) { toast('Completa todos los campos', 'err'); return; }
+    await api('POST', '/transfers/', { to_account_id: to, amount_cents: amount, description: desc || undefined });
+    toast(`Transferencia de ${fmt(amount)} exitosa ✓`, 'ok');
+    document.getElementById('transfer-to').value = '';
+    document.getElementById('transfer-amount').value = '';
+    document.getElementById('transfer-desc').value = '';
+    loadDashboard();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── history ──────────────────────────────────────────────
+async function loadHistory() {
+  try {
+    const txs = await api('GET', '/accounts/history');
+    const el = document.getElementById('history-list');
+    if (!txs.length) { el.innerHTML = '<div class="empty">Sin movimientos</div>'; return; }
+    el.innerHTML = txs.map(tx => txRow(tx)).join('');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── pockets list ─────────────────────────────────────────
+async function loadPockets() {
+  // API no tiene GET /pockets list — mostramos mensaje guía
+  document.getElementById('pocket-detail').style.display = 'none';
+  document.getElementById('pockets-list').innerHTML = `
+    <div class="card">
+      <div class="card-title">Buscar bolsillo por ID</div>
+      <div style="display:flex;gap:8px">
+        <input id="pocket-search-id" type="text" placeholder="pocket-uuid" style="flex:1">
+        <button class="btn btn-primary" onclick="loadPocketById()">Ver →</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:10px">
+        Copia el pocket_id del bolsillo que creaste o te compartieron
+      </div>
+    </div>`;
+  document.getElementById('dash-pockets').textContent = '—';
+}
+
+async function loadPocketById() {
+  const id = document.getElementById('pocket-search-id')?.value?.trim();
+  if (!id) return;
+  currentPocketId = id;
+  await refreshPocketDetail();
+}
+
+async function refreshPocketDetail() {
+  try {
+    const data = await api('GET', `/pockets/${currentPocketId}/status`);
+    document.getElementById('pockets-list').style.display = 'none';
+    document.getElementById('pocket-detail').style.display = 'block';
+
+    const statusBadge = `<span class="badge badge-${data.status}">${data.status}</span>`;
+    const card = document.getElementById('pocket-detail-card');
+    card.innerHTML = `
+      <div class="card-title">Bolsillo · ${data.name} ${statusBadge}</div>
+      <div class="stats" style="margin-bottom:16px">
+        <div class="stat"><div class="stat-label">Meta</div><div class="stat-value">${fmt(data.goal_cents)}</div></div>
+        <div class="stat"><div class="stat-label">Recolectado</div><div class="stat-value green">${fmt(data.collected_cents)}</div></div>
+        <div class="stat"><div class="stat-label">Progreso</div><div class="stat-value purple">${data.progress_pct}%</div></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(data.progress_pct, 100)}%"></div></div>
+      <div class="member-group">
+        <div class="member-group-title"><span class="badge badge-complete">✓ Completo</span> (${data.complete.length})</div>
+        ${data.complete.length ? data.complete.map(m => memberRow(m)).join('') : '<div style="font-size:12px;color:var(--muted);padding:8px">Ninguno aún</div>'}
+      </div>
+      <div class="member-group">
+        <div class="member-group-title"><span class="badge badge-partial">◑ Parcial</span> (${data.partial.length})</div>
+        ${data.partial.length ? data.partial.map(m => memberRow(m)).join('') : '<div style="font-size:12px;color:var(--muted);padding:8px">Ninguno</div>'}
+      </div>
+      <div class="member-group">
+        <div class="member-group-title"><span class="badge badge-pending">○ Pendiente</span> (${data.pending.length})</div>
+        ${data.pending.length ? data.pending.map(m => memberRow(m)).join('') : '<div style="font-size:12px;color:var(--muted);padding:8px">Todos pagaron 🎉</div>'}
+      </div>`;
+
+    const showActions = data.status === 'open' || data.status === 'completed';
+    document.getElementById('pocket-contribute-card').style.display = showActions ? 'block' : 'none';
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function memberRow(m) {
+  return `<div class="member-item">
+    <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">${m.user_id.slice(0,8)}…</span>
+    <span>Meta: ${fmt(m.target_cents)}</span>
+  </div>`;
+}
+
+function hidePocketDetail() {
+  document.getElementById('pocket-detail').style.display = 'none';
+  document.getElementById('pockets-list').style.display = 'block';
+  currentPocketId = null;
+}
+
+// ── contribute / cancel / disburse ───────────────────────
+async function doContribute() {
+  try {
+    const amount = parseInt(document.getElementById('contribute-amount').value);
+    if (!amount || amount <= 0) { toast('Monto inválido', 'err'); return; }
+    const res = await api('POST', `/pockets/${currentPocketId}/contribute`, { amount_cents: amount });
+    toast(`Aporte de ${fmt(amount)} registrado ✓ — ${res.pocket_progress_pct}% del total`, 'ok');
+    await refreshPocketDetail();
+    loadDashboard();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function doCancel() {
+  if (!confirm('¿Cancelar el bolsillo? Todas las contribuciones serán devueltas.')) return;
+  try {
+    const res = await api('POST', `/pockets/${currentPocketId}/cancel`);
+    toast(`Bolsillo cancelado · ${fmt(res.total_refunded_cents)} devueltos a ${res.refunds_issued} persona(s)`, 'ok');
+    await refreshPocketDetail();
+    loadDashboard();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function doDisburse() {
+  if (!confirm('¿Desembolsar los fondos a tu cuenta?')) return;
+  try {
+    const res = await api('POST', `/pockets/${currentPocketId}/disburse`);
+    toast(`${fmt(res.disbursed_cents)} desembolsados a tu cuenta ✓`, 'ok');
+    await refreshPocketDetail();
+    loadDashboard();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── create pocket ─────────────────────────────────────────
+async function doCreatePocket() {
+  try {
+    const name = document.getElementById('pocket-name').value.trim();
+    const goal = parseInt(document.getElementById('pocket-goal').value);
+    const desc = document.getElementById('pocket-desc').value.trim();
+    const membersRaw = document.getElementById('pocket-members').value.trim();
+    const member_user_ids = membersRaw ? membersRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
+
+    if (!name || !goal) { toast('Nombre y meta son obligatorios', 'err'); return; }
+
+    const res = await api('POST', '/pockets/', { name, goal_cents: goal, description: desc || undefined, member_user_ids });
+    toast(`Bolsillo "${name}" creado ✓`, 'ok');
+    toast(`ID: ${res.pocket_id} — compártelo con los miembros`, 'info');
+
+    document.getElementById('pocket-name').value = '';
+    document.getElementById('pocket-goal').value = '';
+    document.getElementById('pocket-desc').value = '';
+    document.getElementById('pocket-members').value = '';
+
+    currentPocketId = res.pocket_id;
+    showPage('pockets');
+    setTimeout(() => { document.getElementById('pocket-search-id').value = res.pocket_id; loadPocketById(); }, 300);
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ── init ──────────────────────────────────────────────────
+if (token) {
+  enterApp();
+} else {
+  document.getElementById('auth-page').style.display = 'flex';
+}
+</script>
+</body>
+</html>
