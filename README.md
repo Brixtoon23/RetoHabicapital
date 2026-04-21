@@ -36,8 +36,7 @@ Vercel, pero no era el foco del reto.
 También dejé por fuera diagramas UML. Me
 gustan porque ordenan mucho, pero hacerlos bien toma tiempo.
 
-Y en general quedaron posibles bugs o edge
-cases si los usuarios se ponen creativos.
+Además no use una arquitetura limpia, con mas tiempo la haria aún más desacoplada.
 
 **Qué harías distinto con más tiempo**
 
