@@ -6,7 +6,7 @@ class DepositRequest(BaseModel):
     amount_cents: int
 
 class TransferRequest(BaseModel):
-    to_account_id: UUID
+    to_mail_id: str
     amount_cents: int
     description: str | None = None
 
