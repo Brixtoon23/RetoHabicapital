@@ -395,6 +395,7 @@ let token = localStorage.getItem('habi_token');
 let currentUser = JSON.parse(localStorage.getItem('habi_user') || 'null');
 let currentAccount = null;
 let currentPocketId = null;
+let recentPockets = JSON.parse(localStorage.getItem('habi_pockets') || '[]');
 
 // ── helpers ──────────────────────────────────────────────
 const fmt = cents => '$' + (cents / 1).toLocaleString('es-CO');
@@ -498,7 +499,7 @@ async function loadDashboard() {
     document.getElementById('nav-user-name').textContent = currentUser?.email?.split('@')[0] || '—';
     document.getElementById('dash-balance').textContent = fmt(acc.balance_cents);
     document.getElementById('dash-balance-raw').textContent = acc.balance_cents.toLocaleString() + ' centavos';
-    document.getElementById('dash-account-id').textContent = acc.id;
+    document.getElementById('dash-account-id').textContent = acc.user_id;
 
     const txs = await api('GET', '/accounts/history');
     renderMiniHistory(txs.slice(0, 5));
@@ -565,25 +566,47 @@ async function loadHistory() {
 
 // ── pockets list ─────────────────────────────────────────
 async function loadPockets() {
-  // API no tiene GET /pockets list — mostramos mensaje guía
   document.getElementById('pocket-detail').style.display = 'none';
-  document.getElementById('pockets-list').innerHTML = `
-    <div class="card">
-      <div class="card-title">Buscar bolsillo por ID</div>
-      <div style="display:flex;gap:8px">
-        <input id="pocket-search-id" type="text" placeholder="pocket-uuid" style="flex:1">
-        <button class="btn btn-primary" onclick="loadPocketById()">Ver →</button>
-      </div>
-      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:10px">
-        Copia el pocket_id del bolsillo que creaste o te compartieron
-      </div>
-    </div>`;
-  document.getElementById('dash-pockets').textContent = '—';
+  document.getElementById('pockets-list').style.display = 'block';
+
+  const list = document.getElementById('pockets-list');
+  list.innerHTML = `<div class="card">
+    <div class="card-title">Buscar bolsillo por ID</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="pocket-search-id" type="text" placeholder="pega el pocket_id aquí" style="flex:1">
+      <button class="btn btn-primary" onclick="loadPocketById()">Ver →</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">
+      El ID aparece al crear el bolsillo o en la URL del detalle
+    </div>
+  </div>
+  <div id="recent-pockets"></div>`;
+
+  if (recentPockets.length) renderRecentPockets();
+}
+
+function renderRecentPockets() {
+  const el = document.getElementById('recent-pockets');
+  if (!el) return;
+  el.innerHTML = `<div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin:16px 0 8px;letter-spacing:0.1em;text-transform:uppercase">Bolsillos recientes</div>` +
+    recentPockets.map(p => `
+      <div class="pocket-card" onclick="openRecentPocket('${p.id}')">
+        <div class="pocket-row">
+          <div class="pocket-name">${p.name}</div>
+          <span class="badge badge-open">open</span>
+        </div>
+        <div class="pocket-meta">Meta: $${p.goal_cents.toLocaleString('es-CO')} · ${p.n_members} personas · ID: ${p.id.slice(0,8)}…</div>
+      </div>`).join('');
+}
+
+async function openRecentPocket(id) {
+  currentPocketId = id;
+  await refreshPocketDetail();
 }
 
 async function loadPocketById() {
   const id = document.getElementById('pocket-search-id')?.value?.trim();
-  if (!id) return;
+  if (!id) { toast('Pega el ID del bolsillo', 'err'); return; }
   currentPocketId = id;
   await refreshPocketDetail();
 }
@@ -682,6 +705,10 @@ async function doCreatePocket() {
     toast(`Bolsillo "${name}" creado ✓`, 'ok');
     toast(`ID: ${res.pocket_id} — compártelo con los miembros`, 'info');
 
+    recentPockets.unshift({ id: res.pocket_id, name, goal_cents: goal, n_members: res.n_members });
+    if (recentPockets.length > 10) recentPockets.pop();
+    localStorage.setItem('habi_pockets', JSON.stringify(recentPockets));
+
     document.getElementById('pocket-name').value = '';
     document.getElementById('pocket-goal').value = '';
     document.getElementById('pocket-desc').value = '';
@@ -689,7 +716,7 @@ async function doCreatePocket() {
 
     currentPocketId = res.pocket_id;
     showPage('pockets');
-    setTimeout(() => { document.getElementById('pocket-search-id').value = res.pocket_id; loadPocketById(); }, 300);
+    setTimeout(() => refreshPocketDetail(), 300);
   } catch(e) { toast(e.message, 'err'); }
 }
 

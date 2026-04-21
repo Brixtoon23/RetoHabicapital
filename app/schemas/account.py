@@ -12,6 +12,7 @@ class TransferRequest(BaseModel):
 
 class AccountResponse(BaseModel):
     id: UUID
+    user_id: UUID
     balance_cents: int
     created_at: datetime
     model_config = {"from_attributes": True}
